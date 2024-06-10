@@ -1,0 +1,75 @@
+I have summarized the article by usingh langchain,open api,map reduce and promt template techique to find time timeline of the major events happened in the article .by using all this we can easliy analyse big articles and give user a detailed and short summariziation of the article.
+
+my code which i used:-
+ 
+import json
+from langchain.chat_models import ChatOpenAI
+from typing import List
+from langchain import PromptTemplate
+from langchain.chat_models import ChatOpenAI
+from langchain.chains.summarize import load_summarize_chain
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# Load JSON data
+file_path = '/Users/snehilkumar/Downloads/news.article.json'
+
+with open(file_path, 'r') as file:
+    data = json.load(file)
+
+def extract_content_from_json(json_file_path: str) -> List[str]:
+    with open(json_file_path, "r") as file:
+        data = json.load(file)
+        content_list = [article.get("articleBody", "") for article in data]
+    return content_list
+
+openai_api_key = "sk-proj-ebpf5Vv8ncxKDdnrksyiT3BlbkFJ8pmdsVUGVtKglWiZwgew"
+
+llm = ChatOpenAI(openai_api_key=openai_api_key, temperature=0, model_name='gpt-3.5-turbo')
+
+json_content_list = extract_content_from_json('/Users/snehilkumar/Downloads/news.article.json')
+
+num_tokens = llm.get_num_tokens(text)
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000000,chunk_overlap=20)
+chunks = text_splitter.create_documents([text])
+
+len(chunks)
+
+chain = load_summarize_chain(
+llm,
+chain_type='map_reduce',
+verbose=False
+)
+summary = chain.run(chunks)
+
+chunks_prompt="""
+Please summarize the major events that had taken place during a particular time-period:
+Speech:'{text}'
+Summary:
+"""
+map_prompt_template = PromptTemplate(input_variables=['text'], 
+                                    template=chunks_prompt)
+  
+  
+  final_combine_prompt='''Provide a final summary of the entire speech with these important points.
+add major events of the Israel- Hamas war that had occurred during the time-period.
+Speech: '{text}'
+'''
+final_combine_prompt_template=PromptTemplate(input_variables=['text'],
+                                            template=final_combine_prompt)
+
+
+summary_chain=load_summarize_chain(
+llm=llm,
+chain_type='map_reduce',
+map_prompt=map_prompt_template,
+combine_prompt=final_combine_prompt_template,
+verbose=False
+)
+output = summary_chain.run(chunks)
+
+
+  
+
+
+
